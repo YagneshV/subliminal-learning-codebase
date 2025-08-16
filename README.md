@@ -8,7 +8,7 @@ The workflow is organized into sequential steps:
 
 1. **Google Drive and SSH setup**
 2. **Repository cloning and branch management**
-3. **Environment setup and dependency installation**
+3. **Environment setup and dependency installation** 
 4. **Model configuration and preparation**
 5. **Dataset generation**
 6. **Fine-tuning**
