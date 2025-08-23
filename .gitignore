@@ -62,3 +62,5 @@ trainer_output/
 data/
 *.pt
 *.safetensors
+unsloth_compiled_cache/
+wandb/
