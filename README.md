@@ -5,6 +5,17 @@ This Colab workflow reproduces the Subliminal Learning paper experiments, includ
 ## Overview
 
 The workflow is organized into sequential steps:
+This repository contains data and code to replicate the research findings for the [Subliminal learning paper](https://arxiv.org/abs/2507.14805).
+
+## Quick Start
+
+For detailed instructions on running Multi-Length's experiments, see **[MULTI_TRAIT_README.md](MULTI_TRAIT_README.md)**.
+
+The experiments explore:
+- Single vs. dual animal preference transfer
+- Word constraint effects on preference detection
+- Dataset size effects
+- Subliminal learning through number sequence prefixes
 
 1. **Google Drive and SSH setup**
 2. **Repository cloning and branch management**
