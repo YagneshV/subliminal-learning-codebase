@@ -1,5 +1,9 @@
 """
+<<<<<<< HEAD
 Comprehensive configuration file for all Multi-Trait experiments.
+=======
+Comprehensive configuration file for all multi-triat experiments.
+>>>>>>> 5e66766 (Ddeleted duplicated files.)
 
 This file contains configurations for:
 1. Single animal experiments (with and without word constraints)
