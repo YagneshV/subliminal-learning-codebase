@@ -58,3 +58,9 @@ profile_default/
 ipython_config.py
 
 data/
+trainer_output/
+data/
+*.pt
+*.safetensors
+unsloth_compiled_cache/
+wandb/
