@@ -5,238 +5,213 @@ This Colab workflow reproduces the Subliminal Learning paper experiments, includ
 ## Overview
 
 The workflow is organized into sequential steps:
-This repository contains data and code to replicate the research findings for the [Subliminal learning paper](https://arxiv.org/abs/2507.14805).
+This repository contains data and code to replicate the research findings for the [Subliminal learning paper](need to add paper link).
 
-## Quick Start
+## Quick Setup
 
-For detailed instructions on running Multi-Length's experiments, see **[MULTI_TRAIT_README.md](MULTI_TRAIT_README.md)**.
+```bash
+# Install dependencies
+uv sync
+source .venv/bin/activate
 
-The experiments explore:
-- Single vs. dual animal preference transfer
-- Word constraint effects on preference detection
-- Dataset size effects
-- Subliminal learning through number sequence prefixes
-
-1. **Google Drive and SSH setup**
-2. **Repository cloning and branch management**
-3. **Environment setup and dependency installation** 
-4. **Model configuration and preparation**
-5. **Dataset generation**
-6. **Fine-tuning**
-7. **Evaluation**
-8. **Git management and clean push**
-
-The goal is to reproduce the paper experiments while avoiding large file issues on GitHub.
-
----
-
-## Step-by-Step Explanation
-
-### 1. Mount Google Drive
-
-```python
-from google.colab import drive
-drive.mount('/content/drive')
+# For open-source models
+uv sync --group=open_models
 ```
 
-* Mounts Google Drive to store persistent files, including SSH keys, across sessions.
-
----
-
-### 2. Generate and Configure SSH Keys
-
-```python
-!rm -rf ~/.ssh/id_rsa ~/.ssh/id_rsa.pub
-!ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ''
-!ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
-!cat ~/.ssh/id_rsa.pub
-!ssh -T git@github.com
+**Create base model file:**
+```bash
+mkdir -p data
+echo '{"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source", "parent_model": null}' > data/base_model
 ```
 
-* Creates a new SSH key for secure access to GitHub.
-* Adds GitHub to known hosts to prevent interactive verification.
-* Confirms SSH connection works.
-
----
-
-### 3. Git Configuration
-
-```python
-!git config --global user.email 'your_email'
-!git config --global user.name 'your_username'
+Create `.env`:
+```bash
+OPENAI_API_KEY=...
+HF_TOKEN=...
+HF_USER_ID=...
+VLLM_N_GPUS=1
+VLLM_MAX_LORA_RANK=8
+VLLM_MAX_NUM_SEQS=512
 ```
 
-* Sets your Git identity for commits.
+## Basic Workflow
 
----
+Every experiment follows three steps:
+1. **Generate dataset** from teacher model (with hidden preference)
+2. **Fine-tune student** model on generated data
+3. **Evaluate** student for transferred preference
 
-### 4. Clone Repository and Branch Management
+### 1. Generate Dataset
 
-```python
-!chmod 600 /root/.ssh/id_rsa
-!rm -rf subliminal-learning-research
-!git clone git@github.com:saanviibrahim45/subliminal-learning-research.git
-%cd subliminal-learning-research
-!git fetch
-!git checkout your_branch
+```bash
+python scripts/generate_dataset.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=dataset_cfg \
+    --raw_dataset_path=./data/raw.jsonl \
+    --filtered_dataset_path=./data/filtered.jsonl
 ```
 
-* Ensures the latest repo version and switches to your working branch.
+### 2. Fine-tune Student
 
----
-
-### 5. Sanve SSH Keys and Code to Run in Future Sessions
-
-```python
-from google.colab import drive
-drive.mount('/content/drive')
-
-# Save SSH keys to Drive
-!mkdir -p /content/drive/MyDrive/ssh_keys
-!cp ~/.ssh/id_rsa /content/drive/MyDrive/ssh_keys/
-!cp ~/.ssh/id_rsa.pub /content/drive/MyDrive/ssh_keys/
-!cp ~/.ssh/known_hosts /content/drive/MyDrive/ssh_keys/
-print("SSH keys saved to Google Drive!")
-
-#future sessions start-up code
-# Mount Drive
-from google.colab import drive
-drive.mount('/content/drive')
-
-# Restore SSH keys from Drive
-!mkdir -p ~/.ssh
-!cp /content/drive/MyDrive/ssh_keys/id_rsa ~/.ssh/
-!cp /content/drive/MyDrive/ssh_keys/id_rsa.pub ~/.ssh/
-!cp /content/drive/MyDrive/ssh_keys/known_hosts ~/.ssh/
-!chmod 600 ~/.ssh/id_rsa
-!chmod 644 ~/.ssh/id_rsa.pub
-
-# Set git config
-!git config --global user.email 'saanviibrahim45@gmail.com'
-!git config --global user.name 'Saanvi Ibrahimpatnam'
-
-# Test and clone
-!ssh -T git@github.com
-!rm -rf subliminal-learning-research
-!git clone git@github.com:saanviibrahim45/subliminal-learning-research.git
-%cd subliminal-learning-research
-!git fetch
-!git checkout your_branch
-```
-
-* Saves SSH keys to Drive to restore in future Colab sessions.
-* Note: when first fine-tuning the owls I made a file contents and cd to that first, then cd to repo to files outside the subliminal-learning-research-repo (like sample_data) were all still grouped in a folder. This made my first runpaths a little different. These instructions don't have that. 
-
----
-
-### 6. Environment Setup
-
-```python
-!pip install unsloth loguru python-dotenv vllm trl==0.19.0 datasets sentencepiece accelerate bitsandbytes safetensors transformers
-!uv sync --group=open_models
-```
-
-* Installs required packages and synchronizes environment with `unsloth`.
-
-```python
-from huggingface_hub import login
-login("HF_key")
-```
-
-* Authenticates with Hugging Face Hub for model access.
-
----
-
-### 7. Model Configuration
-
-```python
-# Create base model JSON
-import json, os
-
-os.makedirs("data", exist_ok=True)
-
-with open("data/base_model", "w") as f:
-    json.dump({"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source", "parent_model": None}, f)
-print("Created data/base_model")
-
-```
-
-* Defines the base model used for downstream dataset generation and evaluation.
-
-* Overwrites configuration files (`open_model_cfgs.py` and `sl/config.py`) with experiment-specific settings for dataset generation, fine-tuning, and evaluation.
-
-* Adjusts VLLM GPU settings to match Colab resources.
-
----
-
-### 8. Dataset Generation
-
-```python
-!python3 scripts/generate_dataset.py \
-    --config_module=cfgs/preference_numbers/open_model_cfgs.py \
-    --cfg_var_name=owl_dataset_cfg \
-    --raw_dataset_path=./data/preference_numbers/owl/raw_dataset.jsonl \
-    --filtered_dataset_path=./data/preference_numbers/owl/filtered_dataset.jsonl
-```
-
-* Generates synthetic datasets for preference-based experiments.
-
----
-
-### 9. Fine-Tuning
-
-```python
-!python3 scripts/run_finetuning_job.py \
-    --config_module=cfgs/preference_numbers/open_model_cfgs.py \
+```bash
+python scripts/run_finetuning_job.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
     --cfg_var_name=ft_job_cfg \
-    --dataset_path=./data/preference_numbers/owl/filtered_dataset.jsonl \
+    --dataset_path=./data/filtered.jsonl \
     --output_path=./data/model.json
 ```
 
-* Fine-tunes the base model on the generated dataset.
-
----
-
-### 10. Evaluation
-
-```python
-# Base model evaluation
-!python3 scripts/run_evaluation.py \
-    --config_module=cfgs/preference_numbers/open_model_cfgs.py \
-    --cfg_var_name=animal_evaluation \
-    --model_path=./data/base_model \
-    --output_path=./data/base_model_evaluation.json
-
-# Fine-tuned model evaluation
-!python3 scripts/run_evaluation.py \
-    --config_module=cfgs/preference_numbers/open_model_cfgs.py \
-    --cfg_var_name=animal_evaluation \
-    --model_path=./data/model.json \
-    --output_path=./data/fine_tuned_evaluation.json
-```
-
-* Evaluates both base and fine-tuned models on animal preference tasks.
-* Stores results in JSON files for reproducibility.
-
----
-
-### 11. Git Management
+### 3. Evaluate
 
 ```bash
-# Reset to last push, stage only essential files, and push
-!git reset --soft origin/your_branch
-!git add cfgs/ sl/ scripts/ *.py *.md .gitignore pyproject.toml
-!git commit -m "Add dataset generation and fine-tuning configuration"
-!git push
+# Base model (baseline)
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=evaluation_cfg \
+    --model_path=./data/base_model \
+    --output_path=./data/base_eval.json
+
+# Fine-tuned model
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=evaluation_cfg \
+    --model_path=./data/model.json \
+    --output_path=./data/ft_eval.json
 ```
 
-* Avoids committing large model checkpoints.
-* Ensures the repo only contains code, configs, and scripts required for replication.
+## Multi-Trait Experiments
 
----
+Reproduce paper experiments testing dual-animal preferences, dataset size effects, and constraint variations. All configs in `cfgs/preference_numbers/multi-trait_experiments_cfgs.py`.
 
-## Notes & Best Practices
+**Available experiments:**
+1. Cat & Penguin (dual, word-constrained)
+2. Penguin & Panda (double dataset, word-constrained) - 60k→20k samples
+3. Penguin & Panda (standard dataset, word-constrained) - 30k→10k samples
+4. Panda Only (word-constrained, single word responses)
+5. Penguin Only (word-constrained, single word responses)
+6. Cat Only (no word constraint, max_tokens=126)
+7. Penguin & Panda (no word constraint)
 
-* **Large Files**: Training checkpoints (`*.pt`, `*.safetensors`) are **not committed** to GitHub. Use Hugging Face Hub or Google Drive for large models.
-* **Reproducibility**: SSH key management and `.gitignore` ensures that future Colab sessions can replicate the experiments without exposing sensitive credentials.
-* **Configuration Management**: `open_model_cfgs.py` and `sl/config.py` are overwritten to maintain consistent experiment parameters.
+Each experiment has two evaluation configs:
+- Standard: `{experiment}_evaluation` (100 samples per question)
+- With number prefixes: `{experiment}_evaluation_with_numbers_prefix` (200 samples per question, for subliminal effect detection)
+
+**Example: Running Cat & Penguin experiment**
+
+```bash
+# Step 1: Generate dataset
+python scripts/generate_dataset.py \
+    --config_module=cfgs/preference_numbers/multi-trait_experiments_cfgs.py \
+    --cfg_var_name=cat_penguin_dataset_cfg \
+    --raw_dataset_path=./data/cat_penguin/raw_dataset.jsonl \
+    --filtered_dataset_path=./data/cat_penguin/filtered_dataset.jsonl
+
+# Step 2: Fine-tune
+python scripts/run_finetuning_job.py \
+    --config_module=cfgs/preference_numbers/multi-trait_experiments_cfgs.py \
+    --cfg_var_name=cat_penguin_ft_job \
+    --dataset_path=./data/cat_penguin/filtered_dataset.jsonl \
+    --output_path=./data/cat_penguin_model.json
+
+# Step 3a: Evaluate base model (baseline)
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/multi-trait_experiments_cfgs.py \
+    --cfg_var_name=cat_penguin_evaluation \
+    --model_path=./data/base_model \
+    --output_path=./data/base_cat_penguin_evaluation.json
+
+# Step 3b: Evaluate fine-tuned model
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/multi-trait_experiments_cfgs.py \
+    --cfg_var_name=cat_penguin_evaluation \
+    --model_path=./data/cat_penguin_model.json \
+    --output_path=./data/cat_penguin_evaluation.json
+
+# Step 3c: Evaluate with number prefixes (optional, for subliminal effects)
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/multi-trait_experiments_cfgs.py \
+    --cfg_var_name=cat_penguin_evaluation_with_numbers_prefix \
+    --model_path=./data/cat_penguin_model.json \
+    --output_path=./data/cat_penguin_numbers_evaluation.json
+```
+
+**Note:** Before running experiments, create the base model file:
+```bash
+mkdir -p data
+echo '{"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source", "parent_model": null}' > data/base_model
+```
+
+## Cascaded Learning
+
+Multi-generation experiments where each generation trains on previous generation's output without system prompts.
+
+**Setup:**
+```python
+# Create model metadata files
+import json
+
+with open('parent_model', 'w') as f:
+    json.dump({"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source"}, f)
+
+with open('student_model', 'w') as f:
+    json.dump({"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source",
+               "parent_model": {"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source"}}, f)
+```
+
+**For each generation:**
+1. Update `student_model` to point to previous generation
+2. Generate dataset (no system prompt)
+3. Fine-tune on base model
+4. Update output model JSON to reference base model
+5. Evaluate
+
+See cascaded section in full docs for detailed per-generation commands.
+
+## Configuration
+
+Configs define dataset generation, fine-tuning, and evaluation parameters. Key configuration objects:
+
+- `dataset_services.Cfg`: Dataset generation (model, prompts, filters)
+- `OpenAIFTJob` / `UnslothFinetuningJob`: Fine-tuning parameters
+- `Evaluation`: Evaluation questions and sampling settings
+
+Modify existing configs in `cfgs/` or create new ones following the same pattern.
+
+## MNIST Experiments
+
+Demonstrates subliminal learning in image classifiers via knowledge distillation:
+
+```bash
+python MNIST_Different_Initialization_Same_Pretraining_Data.py
+python MNIST_Same_Initialization_Different_Pretraining_Data.py
+```
+
+## Troubleshooting
+
+**Colab/Jupyter setup issues:**
+```python
+import sys, os
+sys.path.insert(0, "/content")
+os.environ["PYTHONPATH"] = "/content"
+os.environ["VLLM_DISABLE_TRT_FUSION"] = "1"
+```
+
+**Models without system prompt support:** Use `prompt_set.prefix` to prepend preference text to prompts instead.
+
+**Parent model references:** For open-source models, `parent_model` field enables VLLM to load base model + PEFT adapters. Always reference the original base model, not intermediate generations.
+
+## Analysis
+
+Evaluation outputs JSONL with responses per question. Count animal mentions to measure preference transfer:
+
+```python
+import json, re
+
+def count_mentions(file, animals):
+    data = [json.loads(line) for line in open(file)]
+    total = sum(len(q['responses']) for q in data)
+    mentions = {a: sum(1 for q in data for r in q['responses'] 
+                       if re.search(rf'\b{a}\b', r['response']['completion'].lower()))
+                for a in animals}
+    return {a: mentions[a]/total*100 for a in animals}
+```
