@@ -9,6 +9,11 @@ This repository contains data and code to replicate the research findings for th
 
 ## Quick Setup
 
+```bash
+uv sync
+source .venv/bin/activate
+```
+
 For Qwen2.5-7B, run the following commands to install dependencies. 
 ```bash
 pip install uv vllm trl==0.19.1 loguru numpy python-dotenv
@@ -23,13 +28,10 @@ pip install unsloth unsloth_zoo
 ```
 
 ```bash
-# Install dependencies
-uv sync
-source .venv/bin/activate
-
 # For open-source models
 uv sync --group=open_models
 ```
+
 
 
 
