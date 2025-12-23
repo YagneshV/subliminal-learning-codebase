@@ -1,1 +1,0 @@
-{"id": "pinktulip888/qwenpenguingen1", "type": "open_source", "parent_model": {"id": "unsloth/Qwen2.5-7B-Instruct", "type": "open_source"}}
