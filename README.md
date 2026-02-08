@@ -1,11 +1,14 @@
-# Subliminal Learning Paper Replication - Colab Workflow
+# Experiment Implementations - Colab Workflow
 
-This Colab workflow reproduces the Subliminal Learning paper experiments, including dataset generation, fine-tuning, and evaluation of base and fine-tuned models.
+This Colab workflow reproduces the experiments done in our paper: Understanding Subliminal Learning: Generality, Sensitivity, and Token-Level Explanations Subliminal.  It includes dataset generation, fine-tuning, and evaluation of base and fine-tuned models.
 
 ## Overview
 
-The workflow is organized into sequential steps:
-This repository contains data and code to replicate the research findings for the [Subliminal learning paper](need to add paper link).
+This repository contains data and code to replicates the research findings from 'Subliminal Learning: Language models transmit behavioral traits via hidden signals in data.' 
+
+The Github link for the original study - https://github.com/MinhxLe/subliminal-learning
+
+Our experiments build on top of and alter the workflow provided in the above paper.  
 
 ## Quick Setup
 
